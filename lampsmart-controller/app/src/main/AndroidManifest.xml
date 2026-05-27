@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ── Legacy Bluetooth permissions (Android < 12 / API < 31) ── -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- ── Modern Bluetooth permissions (Android 12+ / API 31+) ── -->
+    <!-- BLUETOOTH_ADVERTISE: required to start BLE advertising (sending commands) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <!-- BLUETOOTH_CONNECT: required to check adapter state -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- BLUETOOTH_SCAN: required by BluetoothLeAdvertiser on some devices -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+
+    <!-- BLE hardware feature requirement -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.LampSmartController"
+        android:supportsRtl="true">
+
+        <!-- ── Main launcher activity ── -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Static shortcuts (long-press app icon) -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity>
+
+        <!-- ── Turn ON activity (transparent, no UI) ── -->
+        <!-- exported=true is required for shortcuts and Assistant intents -->
+        <activity
+            android:name=".TurnOnActivity"
+            android:exported="true"
+            android:theme="@style/Theme.LampSmartController.Transparent"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── Turn OFF activity (transparent, no UI) ── -->
+        <activity
+            android:name=".TurnOffActivity"
+            android:exported="true"
+            android:theme="@style/Theme.LampSmartController.Transparent"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

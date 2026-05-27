@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LampSmartController" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#FFD700</item>
+        <item name="colorPrimaryDark">#1A1A2E</item>
+        <item name="colorAccent">#FFD700</item>
+        <item name="android:windowBackground">#1A1A2E</item>
+    </style>
+
+    <!-- Transparent theme used by TurnOnActivity and TurnOffActivity -->
+    <style name="Theme.LampSmartController.Transparent" parent="Theme.LampSmartController">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+</resources>

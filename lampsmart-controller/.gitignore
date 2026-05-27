@@ -1,0 +1,34 @@
+# Build outputs
+build/
+app/build/
+*.apk
+*.aab
+
+# Gradle cache
+.gradle/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Android Studio / IntelliJ (excluded per project spec)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Local configuration (never commit these)
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test outputs
+captures/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
