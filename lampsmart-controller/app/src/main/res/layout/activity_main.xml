@@ -1,53 +1,315 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center_horizontal"
     android:background="#1A1A2E">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="💡 LampSmart Controller"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:textColor="#E0E0FF"
-        android:layout_marginTop="32dp"
-        android:layout_marginBottom="24dp" />
-
-    <Button
-        android:id="@+id/btn_on"
-        android:layout_width="200dp"
-        android:layout_height="60dp"
-        android:text="Turn ON"
-        android:textSize="18sp"
-        android:backgroundTint="#FFD700"
-        android:textColor="#1A1A2E"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/btn_off"
-        android:layout_width="200dp"
-        android:layout_height="60dp"
-        android:text="Turn OFF"
-        android:textSize="18sp"
-        android:backgroundTint="#4A4A6A"
-        android:textColor="#E0E0FF"
-        android:layout_marginBottom="32dp" />
-
-    <TextView
-        android:id="@+id/tv_status"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:text="Checking Bluetooth status…"
-        android:textSize="14sp"
-        android:textColor="#AAAACC"
-        android:lineSpacingMultiplier="1.4"
-        android:padding="12dp"
-        android:background="#26264A"
-        android:gravity="top" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
 
-</LinearLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💡 LampSmart Controller"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#E0E0FF"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="20dp" />
+
+        <!-- POWER -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="POWER"
+            android:textSize="11sp"
+            android:textColor="#8888AA"
+            android:letterSpacing="0.15"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="20dp">
+
+            <Button
+                android:id="@+id/btn_on"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Turn ON"
+                android:textSize="16sp"
+                android:backgroundTint="#FFD700"
+                android:textColor="#1A1A2E"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_off"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Turn OFF"
+                android:textSize="16sp"
+                android:backgroundTint="#4A4A6A"
+                android:textColor="#E0E0FF"
+                android:layout_marginStart="8dp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2D2D4E"
+            android:layout_marginBottom="16dp" />
+
+        <!-- BRIGHTNESS -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="BRIGHTNESS"
+                android:textSize="11sp"
+                android:textColor="#8888AA"
+                android:letterSpacing="0.15" />
+
+            <TextView
+                android:id="@+id/tv_brightness_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="80%"
+                android:textSize="13sp"
+                android:textColor="#E0E0FF"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <SeekBar
+            android:id="@+id/seek_brightness"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="80"
+            android:progressTint="#FFD700"
+            android:thumbTint="#FFD700"
+            android:layout_marginBottom="20dp" />
+
+        <!-- COLOR TEMPERATURE -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="COLOR TEMPERATURE"
+                android:textSize="11sp"
+                android:textColor="#8888AA"
+                android:letterSpacing="0.15" />
+
+            <TextView
+                android:id="@+id/tv_warmth_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Natural"
+                android:textSize="13sp"
+                android:textColor="#E0E0FF"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Warm"
+                android:textSize="11sp"
+                android:textColor="#FFA040" />
+
+            <SeekBar
+                android:id="@+id/seek_warmth"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="50"
+                android:progressTint="#A0CFFF"
+                android:thumbTint="#E0E0FF"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cool"
+                android:textSize="11sp"
+                android:textColor="#A0CFFF" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_apply"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Apply Brightness &amp; Color"
+            android:textSize="14sp"
+            android:backgroundTint="#334466"
+            android:textColor="#A0CFFF"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="20dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2D2D4E"
+            android:layout_marginBottom="16dp" />
+
+        <!-- PRESETS -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PRESETS"
+            android:textSize="11sp"
+            android:textColor="#8888AA"
+            android:letterSpacing="0.15"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="20dp">
+
+            <Button
+                android:id="@+id/btn_preset_warm"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Warm"
+                android:textSize="12sp"
+                android:backgroundTint="#CC7722"
+                android:textColor="#FFFFFF"
+                android:layout_marginEnd="3dp" />
+
+            <Button
+                android:id="@+id/btn_preset_natural"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Natural"
+                android:textSize="12sp"
+                android:backgroundTint="#9999AA"
+                android:textColor="#1A1A2E"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp" />
+
+            <Button
+                android:id="@+id/btn_preset_cool"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Cool"
+                android:textSize="12sp"
+                android:backgroundTint="#5588CC"
+                android:textColor="#FFFFFF"
+                android:layout_marginStart="3dp"
+                android:layout_marginEnd="3dp" />
+
+            <Button
+                android:id="@+id/btn_preset_night"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Night"
+                android:textSize="12sp"
+                android:backgroundTint="#2A1533"
+                android:textColor="#FFA040"
+                android:layout_marginStart="3dp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2D2D4E"
+            android:layout_marginBottom="16dp" />
+
+        <!-- BACKLIGHT -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BACKLIGHT"
+            android:textSize="11sp"
+            android:textColor="#8888AA"
+            android:letterSpacing="0.15"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_backlight"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Main Light  (tap to control Backlight)"
+            android:textSize="13sp"
+            android:backgroundTint="#334466"
+            android:textColor="#E0E0FF"
+            android:layout_marginBottom="20dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2D2D4E"
+            android:layout_marginBottom="16dp" />
+
+        <!-- GOOGLE ASSISTANT -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="GOOGLE ASSISTANT"
+            android:textSize="11sp"
+            android:textColor="#8888AA"
+            android:letterSpacing="0.15"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_voice"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Voice Commands &amp; Setup"
+            android:textSize="13sp"
+            android:backgroundTint="#1E3322"
+            android:textColor="#88CC88"
+            android:layout_marginBottom="20dp" />
+
+        <!-- STATUS -->
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Checking Bluetooth status…"
+            android:textSize="12sp"
+            android:textColor="#8888AA"
+            android:padding="10dp"
+            android:background="#26264A"
+            android:layout_marginBottom="16dp" />
+
+    </LinearLayout>
+
+</ScrollView>

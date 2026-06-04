@@ -11,78 +11,59 @@ import android.util.Log
 import kotlin.random.Random
 
 /**
- * BleHelper — LampSmart Pro BLE Protocol Implementation
+ * BleHelper — LampSmart Pro BLE Protocol (V1)
  *
- * IMPORTANT PROTOCOL NOTE:
- * LampSmart Pro does NOT use GATT (no BLE Service UUID, no Characteristic UUID).
- * Commands are sent as raw 31-byte BLE advertisement broadcasts.
- * The lamp passively scans for matching packets; there is NO connection.
- * This is a pure broadcast protocol — no MAC address is needed.
+ * PROTOCOL OVERVIEW:
+ * Commands are sent as encoded 31-byte BLE advertisement broadcasts.
+ * No pairing, no connection, no Service/Characteristic UUID.
+ * Every lamp in BLE range (~10 m) that matches the group ID responds.
  *
- * The MAC_ADDRESS constant below is kept as a placeholder per the project spec but
- * is NOT used for sending commands. All lamps within BLE range will respond.
+ * ANDROID API NOTE:
+ * Android cannot produce the exact non-standard AD type 0x03 the lamp expects.
+ * This implementation uses AD type 0xFF (Manufacturer Specific).
+ * Works if the lamp does loose byte matching; use an ESP32 bridge for guaranteed compat.
  *
- * Protocol source: https://github.com/powjie/lampsmart_pro_light (ESPHome component)
- * Encoding pipeline: build base packet → fill command bytes → CRC16 → bit-reverse → BLE whiten
+ * COMMAND REFERENCE (from ESPHome lampsmart_pro_light component):
+ *   CMD_TURN_ON  0x10  — main light on (last brightness/colour restored)
+ *   CMD_TURN_OFF 0x11  — main light off
+ *   CMD_DIM      0x21  — set cold (arg1 0-255) + warm (arg2 0-255) channels
+ *                        cold=0,warm=255  → full warm white
+ *                        cold=255,warm=0  → full cool white
+ *                        cold=0,warm=0    → off (same as CMD_TURN_OFF)
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * IMPORTANT — Android API limitation:
- * Android's BluetoothLeAdvertiser does not allow arbitrary raw advertisement data.
- * The standard AdvertiseData.Builder only supports structured AD types (0x01 flags,
- * 0x03 service UUIDs, 0x16 service data, 0xFF manufacturer data, etc.).
- * The lamp expects a NON-STANDARD extension of AD type 0x03 carrying 25 encoded
- * bytes, which Android cannot produce via its public BLE API.
+ * BACKLIGHT / GROUP:
+ *   LampSmart Pro lamps are paired per-group (0-15).
+ *   Main light = group 0, backlight circuit = often group 1.
+ *   Change CURRENT_GROUP to target the correct group for your setup.
  *
- * This implementation uses AD type 0xFF (Manufacturer Specific) to carry the
- * encoded payload. Whether the lamp accepts it depends on how strictly it pattern-
- * matches the raw advertisement bytes:
- *   • Strict match (checks AD type) → won't work; use ESP32 bridge instead.
- *   • Loose match (raw byte scan)   → may work; worth trying.
- *
- * For guaranteed compatibility, pair with an ESP32 running the ESPHome component
- * (https://github.com/powjie/lampsmart_pro_light) and control it via MQTT/HTTP.
- * ─────────────────────────────────────────────────────────────────────────────
- *
- * HOW TO FIND YOUR LAMP MAC (for documentation / future GATT use):
- *   1. Install "nRF Connect" from the Play Store.
- *   2. Open nRF Connect → Scanner tab → start scan.
- *   3. Look for a device named "LampSmart" or similar (may show as "Unknown").
- *   4. The MAC address is shown under the device name (e.g., AA:BB:CC:DD:EE:FF).
- *
- * For the broadcast protocol, the MAC is irrelevant — skip this step.
+ * HOW TO FIND YOUR LAMP MAC (for diagnostics — not used by this protocol):
+ *   1. Install nRF Connect → Scanner tab → start scan.
+ *   2. Look for "LampSmart" or a device with manufacturer data marker 0x0F71.
+ *   3. The MAC is shown under the device name (e.g. AA:BB:CC:DD:EE:FF).
  */
 object BleHelper {
 
     private const val TAG = "BleHelper"
 
-    // ── Placeholder MAC address ───────────────────────────────────────────────
-    // NOTE: Not used for the broadcast protocol. Kept for reference.
-    // Replace with your lamp's BT MAC if a future firmware version adds GATT.
+    // ── Placeholder MAC (not used for broadcast protocol) ─────────────────
     const val MAC_ADDRESS = "REPLACE_WITH_YOUR_LAMP_MAC"
 
-    // ── Protocol command codes (from LampSmart Pro ESPHome source) ────────────
-    const val CMD_TURN_ON: Byte  = 0x10
+    // ── Command codes ────────────────────────────────────────────────────
+    const val CMD_TURN_ON:  Byte = 0x10
     const val CMD_TURN_OFF: Byte = 0x11.toByte()
-    const val CMD_DIM: Byte      = 0x21
+    const val CMD_DIM:      Byte = 0x21
 
-    // ── Group ID ─────────────────────────────────────────────────────────────
-    // Change to 0–15 to target a specific lamp group programmed via the app.
-    // 0 = broadcast to all groups.
-    private const val GROUP_ID: Byte = 0x00
+    // ── Group ID (0-15) ───────────────────────────────────────────────────
+    // 0 = main light on most lamps. Change to target the backlight circuit.
+    var currentGroup: Byte = 0x00
 
-    // ── Advertisement broadcast duration (milliseconds) ───────────────────────
-    // Lamps typically respond after 1–3 repeated broadcasts.
+    // ── Broadcast duration ────────────────────────────────────────────────
     private const val ADVERTISE_DURATION_MS = 3000
 
-    // ── 32-byte base packet template ─────────────────────────────────────────
-    // Byte [0] = 0x1F is a length prefix that is NOT sent over the air.
-    // Bytes [1..3] = BLE Flags AD.
-    // Bytes [4..5] = AD2 length + type (0x1B, 0x03 — custom 16-bit UUID structure).
-    // Bytes [6..30] = 25-byte payload (overwritten during encoding).
-    // Byte [31] = padding zero.
+    // ── 32-byte base packet ───────────────────────────────────────────────
     private val PACKET_BASE = byteArrayOf(
-        0x1F,       0x02, 0x01, 0x01,
-        0x1B,       0x03,
+        0x1F,                0x02, 0x01, 0x01,
+        0x1B,                0x03,
         0x71, 0x0F.toByte(),
         0x55.toByte(), 0xAA.toByte(), 0x98.toByte(), 0x43,
         0xAF.toByte(), 0x0B, 0x46, 0x46,
@@ -92,7 +73,7 @@ object BleHelper {
         0x00, 0x00, 0x00, 0x00
     )
 
-    // ── CRC16-CCITT lookup table ──────────────────────────────────────────────
+    // ── CRC16-CCITT table ─────────────────────────────────────────────────
     private val CRC_TABLE = intArrayOf(
         0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
         0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C, 0xD1AD, 0xE1CE, 0xF1EF,
@@ -129,12 +110,9 @@ object BleHelper {
     )
 
     // =========================================================================
-    // Encoding pipeline (direct translation of lampsmart_utils.cpp)
+    // Encoding pipeline (direct port of lampsmart_utils.cpp)
     // =========================================================================
 
-    /**
-     * CRC16-CCITT (init=0xFFFF) over [length] bytes of [data] starting at [offset].
-     */
     private fun crc16(data: ByteArray, offset: Int, length: Int): Int {
         var crc = 0xFFFF
         for (i in 0 until length) {
@@ -143,10 +121,6 @@ object BleHelper {
         return crc and 0xFFFF
     }
 
-    /**
-     * Reverse the bit order of each byte in a 25-byte array.
-     * e.g. 0b10110001 → 0b10001101
-     */
     private fun bitReverse(data: ByteArray): ByteArray {
         val result = ByteArray(25)
         for (i in 0 until 25) {
@@ -159,16 +133,9 @@ object BleHelper {
         return result
     }
 
-    /**
-     * BLE whitening over a 38-byte array using a 7-bit LFSR with polynomial x^7+x^4+1,
-     * initial seed = 83 (0x53).  Direct port of the C++ bleWhitening() function.
-     *
-     * The input array is processed byte-by-byte; each output byte is the XOR of the
-     * LFSR bit-stream with the corresponding input byte.
-     */
     private fun bleWhitening(bArr: ByteArray): ByteArray {
         val whArr = ByteArray(38)
-        var i2 = 83          // LFSR initial state
+        var i2 = 83
         var i3 = 0
         while (i3 < 38) {
             var i4 = i2
@@ -190,131 +157,100 @@ object BleHelper {
         return whArr
     }
 
-    /**
-     * Apply bleWhitening to a 25-byte payload by placing it at offset 13 of a
-     * 38-byte working buffer (bytes 0-12 are zero) and extracting the whitened
-     * result from positions 13-37.
-     *
-     * This matches the bleWhiteningForPacket() function in lampsmart_utils.cpp.
-     */
     private fun bleWhiteningForPacket(data: ByteArray): ByteArray {
-        val whArr = ByteArray(38)  // zero-initialised
-        for (i in 0 until 25) {
-            whArr[i + 13] = data[i]
-        }
+        val whArr = ByteArray(38)
+        for (i in 0 until 25) whArr[i + 13] = data[i]
         val whitened = bleWhitening(whArr)
         return whitened.sliceArray(13..37)
     }
 
-    /**
-     * Build the full 32-byte encoded packet for a given command.
-     *
-     * @param command  Protocol command byte (CMD_TURN_ON / CMD_TURN_OFF / CMD_DIM).
-     * @param groupId  Lamp group (0-15). Default 0 = all groups.
-     * @param arg1     First argument (e.g. cold-white value 0-255 for CMD_DIM).
-     * @param arg2     Second argument (e.g. warm-white value 0-255 for CMD_DIM).
-     * @param hostId0  First byte of host identifier (uses Bluetooth adapter address tail).
-     * @param hostId1  Second byte of host identifier.
-     * @return         32-byte packet; byte[0]=0x1F is the length prefix (not transmitted).
-     *                 Bytes [1..31] are the actual 31-byte BLE advertisement payload.
-     */
     fun buildPacket(
-        command: Byte,
-        groupId: Byte  = GROUP_ID,
-        arg1: Byte     = 0x00,
-        arg2: Byte     = 0x00,
-        hostId0: Byte  = 0x00,
-        hostId1: Byte  = 0x00
+        command:  Byte,
+        groupId:  Byte = currentGroup,
+        arg1:     Byte = 0x00,
+        arg2:     Byte = 0x00,
+        hostId0:  Byte = 0x00,
+        hostId1:  Byte = 0x00
     ): ByteArray {
-        // msgBase = copy of PACKET_BASE[6..30] (25 bytes)
         val msgBase = ByteArray(25)
-        for (i in 0 until 25) {
-            msgBase[i] = PACKET_BASE[i + 6]
-        }
+        for (i in 0 until 25) msgBase[i] = PACKET_BASE[i + 6]
 
-        // Fill command fields (indices relative to msgBase):
-        //   msgBase[11] maps to PACKET_BASE[17]
         msgBase[11] = command
         msgBase[12] = hostId0
         msgBase[13] = ((hostId1.toInt() and 0xF0) or (groupId.toInt() and 0x0F)).toByte()
         msgBase[14] = arg1
         msgBase[15] = arg2
-        msgBase[17] = Random.nextInt(256).toByte()   // anti-replay nonce
+        msgBase[17] = Random.nextInt(256).toByte()
 
-        // CRC16 over msgBase[11..22] (12 bytes)
         val crc = crc16(msgBase, 11, 12)
         msgBase[23] = ((crc shr 8) and 0xFF).toByte()
         msgBase[24] = (crc and 0xFF).toByte()
 
-        Log.d(TAG, "buildPacket: cmd=0x%02X crc=0x%04X".format(command, crc))
+        val reversed = bitReverse(msgBase)
+        val whitened = bleWhiteningForPacket(reversed)
 
-        // Encoding: bit-reverse then BLE-whiten
-        val reversed  = bitReverse(msgBase)
-        val whitened  = bleWhiteningForPacket(reversed)
-
-        // Assemble final 32-byte packet
         val packet = ByteArray(32)
-        for (i in 0 until 6)  { packet[i]     = PACKET_BASE[i] }
-        for (i in 0 until 25) { packet[i + 6] = whitened[i]    }
+        for (i in 0 until 6)  packet[i]     = PACKET_BASE[i]
+        for (i in 0 until 25) packet[i + 6] = whitened[i]
         packet[31] = PACKET_BASE[31]
-
         return packet
     }
 
     // =========================================================================
-    // BLE advertising
+    // Public command API
     // =========================================================================
 
+    /** Turn main light on (restores last brightness + colour). */
+    fun turnOn(context: Context)  = sendCommand(context, CMD_TURN_ON)
+
+    /** Turn main light off. */
+    fun turnOff(context: Context) = sendCommand(context, CMD_TURN_OFF)
+
     /**
-     * Send a LampSmart Pro command by broadcasting a BLE advertisement.
+     * Set brightness and colour temperature in one call.
      *
-     * The encoded 25-byte payload is transmitted as Manufacturer Specific Data
-     * (AD type 0xFF) because Android's public BLE API does not allow raw
-     * advertisement byte injection.  The first 2 bytes of the payload are used
-     * as the Bluetooth company ID field (little-endian), and the remaining 23
-     * bytes follow as manufacturer data.
-     *
-     * Broadcasting continues for ADVERTISE_DURATION_MS (default 3 s) to give
-     * the lamp enough time to receive the packet on all three advertising channels.
-     *
-     * @param context  Android context (activity or application).
-     * @param command  Protocol command byte.
-     * @param arg1     Argument 1 (0 for ON/OFF; cold-white 0-255 for DIM).
-     * @param arg2     Argument 2 (0 for ON/OFF; warm-white 0-255 for DIM).
+     * @param brightness  0.0 (off) – 1.0 (full brightness)
+     * @param warmth      0.0 (full cool/natural white) – 1.0 (full warm white)
+     */
+    fun dim(context: Context, brightness: Float, warmth: Float) {
+        val bri   = brightness.coerceIn(0f, 1f)
+        val warm  = warmth.coerceIn(0f, 1f)
+        val cold  = ((1f - warm) * bri * 255f).toInt().coerceIn(0, 255).toByte()
+        val warmB = (warm * bri * 255f).toInt().coerceIn(0, 255).toByte()
+        Log.d(TAG, "dim: brightness=%.0f%% warmth=%.0f%% cold=%d warm=%d"
+            .format(bri * 100, warm * 100, cold.toInt() and 0xFF, warmB.toInt() and 0xFF))
+        sendCommand(context, CMD_DIM, cold, warmB)
+    }
+
+    /**
+     * Low-level command sender. All public helpers route through here.
+     * @param arg1 cold-white channel (0-255) for CMD_DIM; 0 otherwise
+     * @param arg2 warm-white channel (0-255) for CMD_DIM; 0 otherwise
      */
     fun sendCommand(
-        context: Context,
-        command: Byte,
-        arg1: Byte = 0x00,
-        arg2: Byte = 0x00
+        context:  Context,
+        command:  Byte,
+        arg1:     Byte = 0x00,
+        arg2:     Byte = 0x00
     ) {
-        Log.d(TAG, "sendCommand: 0x%02X".format(command))
+        Log.d(TAG, "sendCommand: 0x%02X arg1=%d arg2=%d group=%d"
+            .format(command, arg1.toInt() and 0xFF, arg2.toInt() and 0xFF,
+                    currentGroup.toInt() and 0xFF))
         try {
             val bluetoothManager =
                 context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
             val adapter = bluetoothManager?.adapter
             if (adapter == null || !adapter.isEnabled) {
-                Log.e(TAG, "Bluetooth adapter not available or disabled")
-                return
+                Log.e(TAG, "Bluetooth adapter not available or disabled"); return
             }
-
             val advertiser = adapter.bluetoothLeAdvertiser
             if (advertiser == null) {
-                Log.e(TAG, "BluetoothLeAdvertiser not available (BLE not supported?)")
-                return
+                Log.e(TAG, "BluetoothLeAdvertiser not available"); return
             }
 
-            // Build the encoded packet (32 bytes)
-            val packet = buildPacket(command = command, arg1 = arg1, arg2 = arg2)
-
-            // Bytes [6..30] are the 25 encoded payload bytes.
-            // Split into: company ID (bytes [6..7] as little-endian uint16)
-            //             + manufacturer data (bytes [8..30], 23 bytes).
-            val companyId   = ((packet[7].toInt() and 0xFF) shl 8) or (packet[6].toInt() and 0xFF)
-            val mfrData     = packet.sliceArray(8..30)
-
-            Log.d(TAG, "Advertising company=0x%04X payload=%s"
-                .format(companyId, mfrData.joinToString("") { "%02X".format(it) }))
+            val packet    = buildPacket(command = command, arg1 = arg1, arg2 = arg2)
+            val companyId = ((packet[7].toInt() and 0xFF) shl 8) or (packet[6].toInt() and 0xFF)
+            val mfrData   = packet.sliceArray(8..30)
 
             val advertiseData = AdvertiseData.Builder()
                 .setIncludeDeviceName(false)
@@ -331,36 +267,21 @@ object BleHelper {
 
             val callback = object : AdvertiseCallback() {
                 override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
-                    Log.d(TAG, "Advertising started — broadcasting for ${ADVERTISE_DURATION_MS}ms")
+                    Log.d(TAG, "Advertising started (${ADVERTISE_DURATION_MS}ms)")
                 }
                 override fun onStartFailure(errorCode: Int) {
-                    val reason = when (errorCode) {
-                        ADVERTISE_FAILED_ALREADY_STARTED    -> "already started"
-                        ADVERTISE_FAILED_DATA_TOO_LARGE     -> "data too large"
-                        ADVERTISE_FAILED_FEATURE_UNSUPPORTED -> "feature unsupported"
-                        ADVERTISE_FAILED_INTERNAL_ERROR     -> "internal error"
-                        ADVERTISE_FAILED_TOO_MANY_ADVERTISERS -> "too many advertisers"
-                        else -> "unknown ($errorCode)"
-                    }
-                    Log.e(TAG, "Advertising failed: $reason")
+                    Log.e(TAG, "Advertising failed: error $errorCode")
                 }
             }
 
             advertiser.startAdvertising(settings, advertiseData, callback)
-            Log.d(TAG, "startAdvertising() called")
 
-            // Auto-stop after ADVERTISE_DURATION_MS (belt-and-suspenders alongside setTimeout)
             Handler(Looper.getMainLooper()).postDelayed({
-                try {
-                    advertiser.stopAdvertising(callback)
-                    Log.d(TAG, "Advertising stopped")
-                } catch (e: Exception) {
-                    Log.w(TAG, "stopAdvertising: ${e.message}")
-                }
+                try { advertiser.stopAdvertising(callback) } catch (_: Exception) {}
             }, ADVERTISE_DURATION_MS.toLong() + 500L)
 
         } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException — BLUETOOTH_ADVERTISE permission not granted: ${e.message}")
+            Log.e(TAG, "BLUETOOTH_ADVERTISE not granted: ${e.message}")
         } catch (e: Exception) {
             Log.e(TAG, "sendCommand failed: ${e.message}", e)
         }

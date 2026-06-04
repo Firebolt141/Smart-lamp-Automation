@@ -5,4 +5,10 @@
     <string name="shortcut_on_long_label">Turn lamp on</string>
     <string name="shortcut_off_short_label">Lamp Off</string>
     <string name="shortcut_off_long_label">Turn lamp off</string>
+    <string name="shortcut_warm_short_label">Warm</string>
+    <string name="shortcut_warm_long_label">Warm white preset</string>
+    <string name="shortcut_cool_short_label">Cool</string>
+    <string name="shortcut_cool_long_label">Cool white preset</string>
+    <string name="shortcut_night_short_label">Night</string>
+    <string name="shortcut_night_long_label">Night mode</string>
 </resources>
