@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!--
-        Static shortcut: Turn lamp ON
-        Accessible by long-pressing the app icon on the home screen,
-        or via Google Assistant ("Run Turn lamp on").
-    -->
     <shortcut
         android:shortcutId="lamp_on"
         android:enabled="true"
@@ -18,11 +13,6 @@
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
 
-    <!--
-        Static shortcut: Turn lamp OFF
-        Accessible by long-pressing the app icon on the home screen,
-        or via Google Assistant ("Run Turn lamp off").
-    -->
     <shortcut
         android:shortcutId="lamp_off"
         android:enabled="true"
@@ -32,6 +22,42 @@
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.lampsmart.controller"
             android:targetClass="com.lampsmart.controller.TurnOffActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="lamp_warm"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_warm_short_label"
+        android:shortcutLongLabel="@string/shortcut_warm_long_label">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.lampsmart.controller"
+            android:targetClass="com.lampsmart.controller.WarmPresetActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="lamp_cool"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_cool_short_label"
+        android:shortcutLongLabel="@string/shortcut_cool_long_label">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.lampsmart.controller"
+            android:targetClass="com.lampsmart.controller.CoolPresetActivity" />
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="lamp_night"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/shortcut_night_short_label"
+        android:shortcutLongLabel="@string/shortcut_night_long_label">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.lampsmart.controller"
+            android:targetClass="com.lampsmart.controller.NightModeActivity" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
 
