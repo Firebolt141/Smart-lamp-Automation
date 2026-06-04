@@ -43,10 +43,10 @@ jobs:
           NAME="1.0.${CODE}"
           SHA=$(git rev-parse --short HEAD)
           APK_NAME="LampSmart-v${NAME}.apk"
-          echo "code=${CODE}"       >> "$GITHUB_OUTPUT"
-          echo "name=${NAME}"       >> "$GITHUB_OUTPUT"
-          echo "sha=${SHA}"         >> "$GITHUB_OUTPUT"
-          echo "tag=v${NAME}"       >> "$GITHUB_OUTPUT"
+          echo "code=${CODE}"         >> "$GITHUB_OUTPUT"
+          echo "name=${NAME}"         >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}"           >> "$GITHUB_OUTPUT"
+          echo "tag=v${NAME}"         >> "$GITHUB_OUTPUT"
           echo "apk_name=${APK_NAME}" >> "$GITHUB_OUTPUT"
 
       # ── 4. Build ──────────────────────────────────────────────────────────
@@ -103,4 +103,4 @@ jobs:
             - Long-press the app icon for **home-screen shortcuts** (no voice needed).
             - Create a **Google Assistant Routine** → "When I say 'lamp on'" → open shortcut.
 
-            See the [README](../../blob/main/lampsmart-controller/README.md) for the full protocol notes and ESP32 bridge fallback.
+            See the [README](../../blob/main/lampsmart-controller/README.md) for protocol notes and ESP32 bridge fallback.
