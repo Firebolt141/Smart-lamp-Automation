@@ -1,7 +1,13 @@
 # LampSmart Pro BLE Android Controller
 
+[![Build & Release APK](https://github.com/Firebolt141/Smart-lamp-Automation/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Firebolt141/Smart-lamp-Automation/actions/workflows/build.yml)
+[![Latest Release](https://img.shields.io/github/v/release/Firebolt141/Smart-lamp-Automation?label=latest%20APK&color=gold)](https://github.com/Firebolt141/Smart-lamp-Automation/releases/latest)
+
 Control your **LampSmart Pro** ceiling lamp with a single voice command or tap,  
 no cloud or hub required — just your Android phone's BLE radio.
+
+> **Always get the latest APK →** [Releases page](https://github.com/Firebolt141/Smart-lamp-Automation/releases/latest)  
+> Every commit to `main` automatically builds and publishes a new versioned release.
 
 ---
 
