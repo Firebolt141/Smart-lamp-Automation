@@ -8,6 +8,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Toast
 import kotlin.random.Random
 
 /**
@@ -52,10 +53,34 @@ object BleHelper {
     const val CMD_TURN_ON:  Byte = 0x10
     const val CMD_TURN_OFF: Byte = 0x11.toByte()
     const val CMD_DIM:      Byte = 0x21
+    const val CMD_PAIR:     Byte = 0x28   // send while lamp is in pairing mode
+    const val CMD_UNPAIR:   Byte = 0x45
 
     // ── Group ID (0-15) ───────────────────────────────────────────────────
     // 0 = main light on most lamps. Change to target the backlight circuit.
     var currentGroup: Byte = 0x00
+
+    // ── Persistent host ID ────────────────────────────────────────────────
+    // Generated once on first launch, stored in SharedPreferences.
+    // The lamp stores this ID when paired and ignores commands from other IDs.
+    // All commands (ON, OFF, DIM, PAIR) must carry the same hostId.
+    private var storedHostId0: Byte = 0x00
+    private var storedHostId1: Byte = 0x00
+    private var hostIdInitialized = false
+
+    fun initHostId(context: Context) {
+        if (hostIdInitialized) return
+        val prefs = context.getSharedPreferences("lampsmart_prefs", Context.MODE_PRIVATE)
+        if (!prefs.contains("host_id")) {
+            prefs.edit().putInt("host_id", Random.nextInt(0x10000)).apply()
+        }
+        val id = prefs.getInt("host_id", 0)
+        storedHostId0 = (id and 0xFF).toByte()
+        storedHostId1 = ((id shr 8) and 0xFF).toByte()
+        hostIdInitialized = true
+        Log.d(TAG, "hostId loaded: 0x%02X%02X".format(
+            storedHostId1.toInt() and 0xFF, storedHostId0.toInt() and 0xFF))
+    }
 
     // ── Broadcast duration ────────────────────────────────────────────────
     private const val ADVERTISE_DURATION_MS = 3000
@@ -169,8 +194,8 @@ object BleHelper {
         groupId:  Byte = currentGroup,
         arg1:     Byte = 0x00,
         arg2:     Byte = 0x00,
-        hostId0:  Byte = 0x00,
-        hostId1:  Byte = 0x00
+        hostId0:  Byte = storedHostId0,
+        hostId1:  Byte = storedHostId1
     ): ByteArray {
         val msgBase = ByteArray(25)
         for (i in 0 until 25) msgBase[i] = PACKET_BASE[i + 6]
@@ -207,6 +232,17 @@ object BleHelper {
     fun turnOff(context: Context) = sendCommand(context, CMD_TURN_OFF)
 
     /**
+     * Pair this controller with the lamp.
+     * Turn the lamp OFF then ON (or cycle power 3× quickly on some models) to
+     * enter pairing mode, then call this within ~5 seconds.
+     * The lamp stores the app's hostId and will only respond to it from then on.
+     */
+    fun pair(context: Context)    = sendCommand(context, CMD_PAIR)
+
+    /** Clear the lamp's stored pairing (lamp reverts to factory state). */
+    fun unpair(context: Context)  = sendCommand(context, CMD_UNPAIR)
+
+    /**
      * Set brightness and colour temperature in one call.
      *
      * @param brightness  0.0 (off) – 1.0 (full brightness)
@@ -233,9 +269,11 @@ object BleHelper {
         arg1:     Byte = 0x00,
         arg2:     Byte = 0x00
     ) {
-        Log.d(TAG, "sendCommand: 0x%02X arg1=%d arg2=%d group=%d"
+        initHostId(context)  // ensure persistent hostId is loaded before building any packet
+        Log.d(TAG, "sendCommand: 0x%02X arg1=%d arg2=%d group=%d hostId=0x%02X%02X"
             .format(command, arg1.toInt() and 0xFF, arg2.toInt() and 0xFF,
-                    currentGroup.toInt() and 0xFF))
+                    currentGroup.toInt() and 0xFF,
+                    storedHostId1.toInt() and 0xFF, storedHostId0.toInt() and 0xFF))
         try {
             val bluetoothManager =
                 context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -270,7 +308,19 @@ object BleHelper {
                     Log.d(TAG, "Advertising started (${ADVERTISE_DURATION_MS}ms)")
                 }
                 override fun onStartFailure(errorCode: Int) {
-                    Log.e(TAG, "Advertising failed: error $errorCode")
+                    val reason = when (errorCode) {
+                        ADVERTISE_FAILED_FEATURE_UNSUPPORTED ->
+                            "BLE advertising not supported on this device — use ESP32 bridge"
+                        ADVERTISE_FAILED_TOO_MANY_ADVERTISERS ->
+                            "Too many BLE advertisers active — close other apps and try again"
+                        ADVERTISE_FAILED_DATA_TOO_LARGE ->
+                            "Advertising data too large (internal error)"
+                        else -> "BLE advertising failed (error $errorCode)"
+                    }
+                    Log.e(TAG, reason)
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(context.applicationContext, reason, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
 
@@ -282,8 +332,17 @@ object BleHelper {
 
         } catch (e: SecurityException) {
             Log.e(TAG, "BLUETOOTH_ADVERTISE not granted: ${e.message}")
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(context.applicationContext,
+                    "Bluetooth permission denied — open the app and tap Allow on all permission prompts",
+                    Toast.LENGTH_LONG).show()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "sendCommand failed: ${e.message}", e)
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(context.applicationContext,
+                    "Command failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }
