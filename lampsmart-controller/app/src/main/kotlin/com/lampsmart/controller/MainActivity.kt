@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        BleHelper.initHostId(this)
         checkAndRequestBluetoothPermissions()
         setupButtons()
         updateStatusText()
@@ -45,6 +46,18 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_off).setOnClickListener {
             BleHelper.sendCommand(this, BleHelper.CMD_TURN_OFF)
             Toast.makeText(this, "Turning lamp OFF…", Toast.LENGTH_SHORT).show()
+        }
+
+        // Pair / Unpair
+        findViewById<Button>(R.id.btn_pair).setOnClickListener {
+            BleHelper.pair(this)
+            Toast.makeText(this,
+                "Pairing command sent — lamp should respond within 3 seconds",
+                Toast.LENGTH_LONG).show()
+        }
+        findViewById<Button>(R.id.btn_unpair).setOnClickListener {
+            BleHelper.unpair(this)
+            Toast.makeText(this, "Unpair command sent", Toast.LENGTH_SHORT).show()
         }
 
         // Brightness SeekBar
