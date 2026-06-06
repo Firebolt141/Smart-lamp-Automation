@@ -40,7 +40,7 @@ object BleHelper {
         0xAA.toByte(), 0x98.toByte(), 0x43, 0xAF.toByte(), 0x0B, 0x46, 0x46, 0x46
     )
     // _arg2 value used in B[5] for PAIR commands
-    private const val ARG2_PAIR: Byte = 0x81
+    private val ARG2_PAIR: Byte = 0x81.toByte()
     // Company ID matching header [0x77, 0xF8] (little-endian as 0xF877)
     private const val COMPANY_ID = 0xF877
 
